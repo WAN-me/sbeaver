@@ -37,7 +37,7 @@ def page_not_found(request):
 ```
 ![image](https://user-images.githubusercontent.com/77948630/159173717-acbb3011-c612-40c2-8d7e-d2d7ff8be650.png)
 
-Также сделано с кодом 500. Когда во время обработки пользовательского запроса возникает исключение, отображается сообщение об ошибке и вызывается функция code505.
+Also done with 500 code. When an exception occurs during the processing of a user request, an error will be displayed and the code function will be called
 
 ```
 @server.code500()
