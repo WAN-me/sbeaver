@@ -1,0 +1,9 @@
+setup.cfg
+setup.py
+sbeaver/__init__.py
+sbeaver/sbeaver.py
+sbeaver.egg-info/PKG-INFO
+sbeaver.egg-info/SOURCES.txt
+sbeaver.egg-info/dependency_links.txt
+sbeaver.egg-info/not-zip-safe
+sbeaver.egg-info/top_level.txt
