@@ -3,6 +3,7 @@ from socketserver import ThreadingMixIn
 from traceback import print_tb
 import urllib.parse
 import json
+import re
 
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     pass
@@ -57,9 +58,9 @@ class CustomHandler(BaseHTTPRequestHandler):
         main_server.async_worker(self)
 
 class Server():
-    def bind(self, path=''):
+    def bind(self, path_regex=''):
         def my_decorator(func):
-            self.bindes[path] = func
+            self.bindes[path_regex] = func
             def wrapper(pat):
                 return func(pat)
             return wrapper
@@ -84,12 +85,16 @@ class Server():
     def async_worker(self, request):
         rr = CustomRequest(request)
         try:
-            if rr.path in self.bindes:
-                res = self.bindes[rr.path](rr)
+            for bind in self.bindes:
+                match = re.fullmatch(bind, rr.path)
+                if match:
+                    res = self.bindes[bind](rr,match.groups())
+                    break
             else:
                 res = 404, (self.code404(rr) if self.code404 else {'error':400})
         except Exception as e:
             print_tb(e.__traceback__)
+            print(e)
             try:
                 res = 500, (self.code500(rr) if self.code500 else {'error':500})
             except:
