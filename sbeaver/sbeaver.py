@@ -69,19 +69,6 @@ def redirect(code,location):
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     pass
 
-def __parse_data(datastr: str):
-    result = {}
-    lines = datastr.split('&')
-    for line in lines:
-        splited = line.split("=",1)
-        key = urllib.parse.unquote(splited[0])
-        value = ''
-        for word in splited[1].split('+'):
-            word = urllib.parse.unquote(word)
-            value += word + " "
-        value = value[:-1]
-        result[key] = value
-    return result
 
 class Request():
     def parse_all(self):
@@ -89,6 +76,20 @@ class Request():
         self._headers
         self._args
         self._data
+        
+    def __parse_data(datastr: str):
+        result = {}
+        lines = datastr.split('&')
+        for line in lines:
+            splited = line.split("=",1)
+            key = urllib.parse.unquote(splited[0])
+            value = ''
+            for word in splited[1].split('+'):
+                word = urllib.parse.unquote(word)
+                value += word + " "
+            value = value[:-1]
+            result[key] = value
+        return result
     @property
     def _ip(self):
         self.ip = self.req.client_address[0]
@@ -114,7 +115,7 @@ class Request():
             length = int(self.headers.get('Content-Length','0'))
             if length > 0:
                 self.rawdata = self.req.rfile.read(length).decode()
-                self.data = __parse_data(self.rawdata)
+                self.data = Request.__parse_data(self.rawdata)
         return self.data
     def __init__(self,req: BaseHTTPRequestHandler):
         self.req = req
@@ -177,7 +178,7 @@ class Server():
 
     def code404(self):
         def my_decorator(func):
-            self.code404 = func
+            self._code404 = func
             def wrapper(pat):
                 return func(pat)
             return wrapper
@@ -185,7 +186,7 @@ class Server():
     
     def code500(self):
         def my_decorator(func):
-            self.code500 = func
+            self._code500 = func
             def wrapper(pat):
                 return func(pat)
             return wrapper
@@ -200,16 +201,16 @@ class Server():
                     res = self.bindes[bind](rr,*match.groups())
                     break
             else:
-                if self.code404:
-                    res = 404, self.code404(rr)
+                if self.__dict__.get('_code404'):
+                    res = 404, self._code404(rr)
                 else: res = 404, {'error':404}
                 
         except Exception as e:
             print_tb(e.__traceback__)
             print(e)
             try:
-                if self.code500:
-                    res = 500, self.code500(rr, e)
+                if self.__dict__.get('_code500'):
+                    res = 500, self._code500(rr, e)
                 else: res = 500, {'error':500}
             except:
                 res = 500, {"error":500}
