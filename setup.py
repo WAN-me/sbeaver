@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='sbeaver',
-      version='0.3.1',
+      version='0.3.3',
       license='GNU',
       url="https://github.com/wex335/sbeaver",
       platforms='ALL',
