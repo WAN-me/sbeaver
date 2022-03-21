@@ -35,11 +35,11 @@ class CustomRequest():
         if '?' in req.path:
             splited = req.path.split('?',1)
             self.rawargs = urllib.parse.parse_qs(splited[1])
-            self.path = splited[0]
+            self.path = urllib.parse.unquote(splited[0])
             for arg in self.rawargs:
                 self.args[arg] = self.rawargs[arg][0]
         else:
-            self.path = req.path
+            self.path = urllib.parse.unquote(req.path)
 
         # parse data
         self.data = {}
@@ -61,6 +61,35 @@ class Server():
     def bind(self, path_regex=''):
         def my_decorator(func):
             self.bindes[path_regex] = func
+            def wrapper(pat):
+                return func(pat)
+            return wrapper
+        return my_decorator
+
+    def ebind(self, path_regex=''):
+        """Bind endpoint by '<some>'
+        Example: 
+        @server.ebind('/ebind/<submethod>/<method>')
+        def ebind(request,  submethod = None, method = None):"""
+        def my_decorator(func):
+            rr = re.findall(r'(<\w+>)+',path_regex)
+            reg = path_regex
+            for _ in rr:
+                if len(_) > 0: 
+                    reg = reg.replace(_,r'(\w+)')
+            self.bindes[reg] = func
+            def wrapper(pat):
+                return func(pat)
+            return wrapper
+        return my_decorator
+    
+    def sbind(self, path):
+        """Bind static endpoint on path'
+        Example: 
+        @server.sbind('/sbind')
+        def sbind(request):"""
+        def my_decorator(func):
+            self.bindes[path+"$"] = func
             def wrapper(pat):
                 return func(pat)
             return wrapper
@@ -88,7 +117,7 @@ class Server():
             for bind in self.bindes:
                 match = re.fullmatch(bind, rr.path)
                 if match:
-                    res = self.bindes[bind](rr,match.groups())
+                    res = self.bindes[bind](rr,*match.groups())
                     break
             else:
                 res = 404, (self.code404(rr) if self.code404 else {'error':400})

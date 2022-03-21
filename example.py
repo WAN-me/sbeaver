@@ -2,17 +2,24 @@ import sbeaver
 
 server = sbeaver.Server(address="localhost", port=8000, sync=True)
 
-@server.bind('/')
-def index(request, args):
+@server.sbind('/')
+def index(request):
     return 200, {'status':'ok'}
 
 @server.bind(r'/regex/(\w*)(?:\.|/)(\w*)(?:|/)')
-def regex(request, args):
-    return 200, {'section':args[0], 'method':args[1]}
+def regex(request, group_1 = None, group_2 = None):
+    return 200, {'section':group_1, 'method':group_2}
 
-@server.bind(r'/info')
-def info(request, args):
-    print(args)
+@server.bind(r'(/word/)|(\w+)+')
+def words(request, *args):
+    return 200, {'words':args, "path": request.path}
+
+@server.ebind('/ebind/<submethod>/<method>')
+def method(request,  submethod = None, method = None):
+    return 200, {'section':submethod, 'method':method}
+
+@server.sbind('/info')
+def info(request):
     return 200, {'info':request.__dict__}
 
 @server.code404()

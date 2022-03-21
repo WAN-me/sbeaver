@@ -1,11 +1,11 @@
 Metadata-Version: 2.1
 Name: sbeaver
-Version: 0.0
+Version: 0.2
 Summary: Simple http server for api
-Home-page: UNKNOWN
+Home-page: https://github.com/wex335/sbeaver
 Author-email: wex335@yandex.ru
-License: UNKNOWN
-Platform: UNKNOWN
+License: GNU
+Platform: All
 
 UNKNOWN
 
