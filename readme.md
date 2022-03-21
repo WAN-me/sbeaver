@@ -75,6 +75,14 @@ You can redirect user to another page using method redirect
 Example: 
 ```python
 @server.sbind('/') # static bind
-def args(request: sbeaver.Request):
+def args(request):
     return sbeaver.redirect(307,'/info') # redirect with data(307 code)
+```
+
+# Files
+You can return files using method file
+```python
+@server.sbind('/photo')
+def photo(request):
+    return sbeaver.file('beaver.png',sbeaver.Types.image.png)
 ```

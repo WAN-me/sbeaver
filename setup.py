@@ -1,12 +1,11 @@
 from setuptools import setup
 
 setup(name='sbeaver',
-      version='0.3',
+      version='0.3.1',
       license='GNU',
       url="https://github.com/wex335/sbeaver",
       platforms='ALL',
-      long_description="""
-# Sbeaver
+      long_description="""# Sbeaver
 This is sbeaver - a lightweight and extremely simple http server for creating APIs.
 
 To install sbeaver on your system, you can use the `pip install sbeaver` command, or you can download this repository and run `python setup.py install`
@@ -83,8 +82,16 @@ You can redirect user to another page using method redirect
 Example: 
 ```python
 @server.sbind('/') # static bind
-def args(request: sbeaver.Request):
+def args(request):
     return sbeaver.redirect(307,'/info') # redirect with data(307 code)
+```
+
+# Files
+You can return files using method file
+```python
+@server.sbind('/photo')
+def photo(request):
+    return sbeaver.file('beaver.png',sbeaver.Types.image.png)
 ```
 
 """,

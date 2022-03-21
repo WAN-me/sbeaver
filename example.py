@@ -1,4 +1,5 @@
 import sbeaver
+sbeaver.Types
 server = sbeaver.Server(address="localhost", port=8000, sync=True)
 
 @server.sbind('/') # static bind
@@ -18,6 +19,13 @@ def info(request: sbeaver.Request):
     request.parse_all() # get and save data, url params, ip from request
     return 200, request.dict # return all known data about request
 
+@server.sbind('/photo')
+def photo(request: sbeaver.Request):
+    return sbeaver.file('beaver.png',sbeaver.Types.image.png)
+
+@server.sbind('/docs')
+def docs(request: sbeaver.Request):
+    return sbeaver.file('readme.md',sbeaver.Types.text.md)
 
 @server.code404() # edit 404 error
 def page_not_found(request: sbeaver.Request):

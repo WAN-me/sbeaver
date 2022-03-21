@@ -4,6 +4,59 @@ from traceback import print_tb
 import urllib.parse
 import json
 import re
+import os
+
+class Types():
+    class aplication():
+        jar = 'application/java-archive'
+        js = 'application/javascript'   
+        ogg = 'application/ogg'   
+        pdf = 'application/pdf'
+        xhtml = 'application/xhtml+xml'   
+        shockwave = 'application/x-shockwave-flash'    
+        json = 'application/json'  
+        ld_json = 'application/ld+json'  
+        xml = 'application/xml'   
+        zip = 'application/zip'  
+        x_www_form_urlencoded = 'application/x-www-form-urlencoded'  
+        other = 'application/octet-stream'   
+    class audio():
+        mp3 = 'audio/mpeg'
+        wma ='audio/x-ms-wma'   
+        realaudio = 'audio/vnd.rn-realaudio'   
+        wav ='audio/x-wav'   
+        ogg = 'audio/ogg'
+    class image():
+        gif = 'image/gif'
+        jpeg = 'image/jpeg'
+        pjpeg = 'image/pjpeg'
+        png = 'image/png'
+        tiff = 'image/tiff'
+        micon = 'image/vnd.microsoft.icon'
+        icon = 'image/x-icon'
+        djvu = 'image/vnd.djvu'
+        svg = 'image/svg+xml'
+        wap_webp = 'image/vnd.wap.wbmp'
+        webp = 'image/webp'
+    class text():
+        css = 'text/css'    
+        csv = 'text/csv'    
+        html = 'text/html'    
+        js = 'text/javascript'    
+        plain = 'text/plain'    
+        xml = 'text/xml'    
+        md = 'text/markdown'
+    class video():
+        mpeg = 'video/mpeg'
+        mp4 = 'video/mp4'
+        quicktime = 'video/quicktime'    
+        wmv = 'video/x-ms-wmv'    
+        msvideo = 'video/x-msvideo'    
+        flv = 'video/x-flv'   
+        webm = 'video/webm' 
+def file(path, type, filename=None):
+    with open(path, "rb") as file:
+        return 200, file.read(-1), type, {"Content-disposition": f'attachment; filename="{filename or path.split(os.sep,1)[::-1][0]}"'}
 
 def redirect(code,location):
     html = f'''<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">\n
@@ -166,9 +219,14 @@ class Server():
 
         # Content type
         if len(res) >= 3:
-            request.send_header('Content-type', res[3])
+            if len(res) >= 4:
+                for v in res[3]:
+                    request.send_header(v, res[3][v])
+                    print(f'{v} sended')
+
+            request.send_header('Content-type', res[2])
             request.end_headers()
-            request.wfile.write(res[1].encode())
+            request.wfile.write(res[1])
         else:
             if type(res[1]) is str:
                 request.send_header('Content-type', 'text/html')
