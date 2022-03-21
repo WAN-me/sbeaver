@@ -5,6 +5,14 @@ import urllib.parse
 import json
 import re
 
+def redirect(code,location):
+    html = f'''<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">\n
+    <title>Redirecting...</title>\n
+    <h1>Redirecting...</h1>\n
+    <p>You should be redirected automatically to target URL: 
+    <a href="{location}">{location}</a>. If not click the link.'''
+    return code, html
+
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     pass
 
@@ -22,39 +30,58 @@ def __parse_data(datastr: str):
         result[key] = value
     return result
 
-class CustomRequest():
-    def __init__(self,req: BaseHTTPRequestHandler):
-        self.ip = req.client_address[0]
-        # parse headers
+class Request():
+    def parse_all(self):
+        self._ip
+        self._headers
+        self._args
+        self._data
+    @property
+    def _ip(self):
+        self.ip = self.req.client_address[0]
+        return self.ip
+    @property
+    def _headers(self):
         self.headers = {}
-        for i in range(len(req.headers.values())):
-            self.headers[req.headers.keys()[i]] = req.headers.values()[i]
-
-        # parse args
+        for i in range(len(self.req.headers.values())):
+            self.headers[self.req.headers.keys()[i]] = self.req.headers.values()[i]
+        return self.headers
+    @property
+    def _args(self):
         self.args = {}
-        if '?' in req.path:
-            splited = req.path.split('?',1)
-            self.rawargs = urllib.parse.parse_qs(splited[1])
-            self.path = urllib.parse.unquote(splited[0])
-            for arg in self.rawargs:
-                self.args[arg] = self.rawargs[arg][0]
-        else:
-            self.path = urllib.parse.unquote(req.path)
-
-        # parse data
+        if '?' in self.req.path:
+            rawargs = urllib.parse.parse_qs(self.splited[1])
+            for arg in rawargs:
+                self.args[arg] = rawargs[arg][0]
+        return self.args
+    @property
+    def _data(self):
         self.data = {}
-        length = int(self.headers.get('Content-Length','0'))
-        if length > 0:
-            self.rawdata = req.rfile.read(length).decode()
-            self.data = __parse_data(self.rawdata)
+        if "Content-Length" in self.req.headers.keys():
+            length = int(self.headers.get('Content-Length','0'))
+            if length > 0:
+                self.rawdata = self.req.rfile.read(length).decode()
+                self.data = __parse_data(self.rawdata)
+        return self.data
+    def __init__(self,req: BaseHTTPRequestHandler):
+        self.req = req
+        self.splited = req.path.split('?',1)
+        self.path = urllib.parse.unquote(self.splited[0])
 
     def __str__(self) -> str:
         return f'headers: {self.headers}\nargs: {self.args}\ndata: {self.data}' 
+    @property
+    def dict(self):
+        d = self.__dict__
+        d.pop('req')
+        return d
 
 class CustomHandler(BaseHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super(CustomHandler, self).__init__(*args, **kwargs)
     def do_GET(self):
+        main_server.async_worker(self)
+    def do_POST(self):
         main_server.async_worker(self)
 
 class Server():
@@ -112,7 +139,7 @@ class Server():
         return my_decorator
             
     def async_worker(self, request):
-        rr = CustomRequest(request)
+        rr = Request(request)
         try:
             for bind in self.bindes:
                 match = re.fullmatch(bind, rr.path)
@@ -120,25 +147,39 @@ class Server():
                     res = self.bindes[bind](rr,*match.groups())
                     break
             else:
-                res = 404, (self.code404(rr) if self.code404 else {'error':400})
+                if self.code404:
+                    res = 404, self.code404(rr)
+                else: res = 404, {'error':404}
+                
         except Exception as e:
             print_tb(e.__traceback__)
             print(e)
             try:
-                res = 500, (self.code500(rr) if self.code500 else {'error':500})
+                if self.code500:
+                    res = 500, self.code500(rr, e)
+                else: res = 500, {'error':500}
             except:
                 res = 500, {"error":500}
         request.send_response(res[0])
-        if type(res[1]) is str:
-            request.send_header('Content-type', 'text/html')
+        if res[0] >= 300 and res[0] < 400:
+            request.send_header("Location", res[1].split('href="')[1].split('"')[0])
+
+        # Content type
+        if len(res) >= 3:
+            request.send_header('Content-type', res[3])
             request.end_headers()
             request.wfile.write(res[1].encode())
-        elif type(res[1]) is dict:
-            request.send_header('Content-type', 'application/json')
-            request.end_headers()
-            request.wfile.write(json.dumps(res[1]).encode())
         else:
-            request.wfile.write(str(res[1]).encode())
+            if type(res[1]) is str:
+                request.send_header('Content-type', 'text/html')
+                request.end_headers()
+                request.wfile.write(res[1].encode())
+            elif type(res[1]) is dict:
+                request.send_header('Content-type', 'application/json')
+                request.end_headers()
+                request.wfile.write(json.dumps(res[1]).encode())
+            else:
+                request.wfile.write(str(res[1]).encode())
         return
 
     def __init__(self, address = "localhost", port = 8000, sync = True):

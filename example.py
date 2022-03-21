@@ -1,33 +1,30 @@
 import sbeaver
-
 server = sbeaver.Server(address="localhost", port=8000, sync=True)
 
-@server.sbind('/')
-def index(request):
-    return 200, {'status':'ok'}
+@server.sbind('/') # static bind
+def args(request: sbeaver.Request):
+    return sbeaver.redirect(307,'/info') # redirect with data(307 code)
 
-@server.bind(r'/regex/(\w*)(?:\.|/)(\w*)(?:|/)')
-def regex(request, group_1 = None, group_2 = None):
-    return 200, {'section':group_1, 'method':group_2}
+@server.bind(r'/regex/(\w*)(?:\.|/)(\w*)(?:|/)') # bind by regex
+def regex(request: sbeaver.Request, param1 = None, param2 = None): # params from regex(capture groups)
+    return 200, {'first':param1, 'second':param2}
 
-@server.bind(r'(/word/)|(\w+)+')
-def words(request, *args):
-    return 200, {'words':args, "path": request.path}
-
-@server.ebind('/ebind/<submethod>/<method>')
-def method(request,  submethod = None, method = None):
+@server.ebind('/ebind/<submethod>/<method>') # bind by <some> construction
+def method(request: sbeaver.Request,  submethod = None, method = None):
     return 200, {'section':submethod, 'method':method}
 
 @server.sbind('/info')
-def info(request):
-    return 200, {'info':request.__dict__}
+def info(request: sbeaver.Request):
+    request.parse_all() # get and save data, url params, ip from request
+    return 200, request.dict # return all known data about request
 
-@server.code404()
-def page_not_found(request):
+
+@server.code404() # edit 404 error
+def page_not_found(request: sbeaver.Request):
     return {'error404': f"path {request.path} not found"}
 
-@server.code500()
-def internal_server_error(request):
-    return {'error500': f"Exception happened"}
+@server.code500() # edit 500 error
+def internal_server_error(request: sbeaver.Request, Exception):
+    return {'error500': f"{Exception} happened"}
 
 server.start()
