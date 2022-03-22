@@ -91,12 +91,9 @@ class Request():
         self._args
         self.form =  {}
         encoding = self.headers.get('Content-Encoding')
-        print(encoding)
         if "Content-Length" in self.headers:
             length = int(self.headers.get('Content-Length','0'))
             self.raw_data = self.req.rfile.read(length) # Получаем сырой контент
-            print(encoding)
-            print(encoding in ['gzip','x-gzip'] and 'gzip' in sys.modules)
             if encoding in ['gzip','x-gzip'] and 'gzip' in sys.modules: # Если контент сжат gzip ом и модуль импортирован то декомпрессить
                 self.raw_data = gzip.decompress(self.raw_data)
             elif encoding in ['br'] and 'brotli' in sys.modules: # Если контент сжат br ом и модуль импортирован то декомпрессить
@@ -110,8 +107,6 @@ class Request():
                     headers=self.headers,
                     environ={'REQUEST_METHOD': 'POST'},
                 )
-            print(self.form)
-            print(self.raw_data)
         self.data = {}
         self.files = {}
         for key in self.form.keys(): 
