@@ -3,6 +3,7 @@ from socketserver import ThreadingMixIn
 from traceback import print_tb
 import urllib.parse
 import json
+import cgi
 import re
 import os
 
@@ -64,7 +65,7 @@ def redirect(code,location):
     <h1>Redirecting...</h1>\n
     <p>You should be redirected automatically to target URL: 
     <a href="{location}">{location}</a>. If not click the link.'''
-    return code, html
+    return code, html, Types.text.html, {"Location": location}
 
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     pass
@@ -75,21 +76,24 @@ class Request():
         self._ip
         self._headers
         self._args
-        self._data
+        self.form =  {}
+        if "Content-Length" in self.headers:
+            length = int(self.headers.get('Content-Length','0'))
+            if length > 0:
+                self.form = cgi.FieldStorage(
+                    fp=self.req.rfile,
+                    headers=self.req.headers,
+                    environ={'REQUEST_METHOD': 'POST'}
+                )
+        self.data = {}
+        self.files = {}
+        for key in self.form.keys(): 
+            value = self.form.getvalue(key)
+            if type(value) is bytes:
+                self.files[key] = value
+            else:
+                self.data[key] = value
         
-    def __parse_data(datastr: str):
-        result = {}
-        lines = datastr.split('&')
-        for line in lines:
-            splited = line.split("=",1)
-            key = urllib.parse.unquote(splited[0])
-            value = ''
-            for word in splited[1].split('+'):
-                word = urllib.parse.unquote(word)
-                value += word + " "
-            value = value[:-1]
-            result[key] = value
-        return result
     @property
     def _ip(self):
         self.ip = self.req.client_address[0]
@@ -108,35 +112,31 @@ class Request():
             for arg in rawargs:
                 self.args[arg] = rawargs[arg][0]
         return self.args
-    @property
-    def _data(self):
-        self.data = {}
-        if "Content-Length" in self.req.headers.keys():
-            length = int(self.headers.get('Content-Length','0'))
-            if length > 0:
-                self.rawdata = self.req.rfile.read(length).decode()
-                self.data = Request.__parse_data(self.rawdata)
-        return self.data
-    def __init__(self,req: BaseHTTPRequestHandler):
+    def __init__(self,req: BaseHTTPRequestHandler, method = 'GET'):
         self.req = req
         self.splited = req.path.split('?',1)
         self.path = urllib.parse.unquote(self.splited[0])
+        self.method = method
 
     def __str__(self) -> str:
         return f'headers: {self.headers}\nargs: {self.args}\ndata: {self.data}' 
     @property
     def dict(self):
         d = self.__dict__
-        d.pop('req')
-        return d
+        dell = ['req', 'form', 'files']
+        result = {}
+        for key in d:
+            if not key in dell:
+                result[key] = d[key]
+        return result
 
 class CustomHandler(BaseHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super(CustomHandler, self).__init__(*args, **kwargs)
     def do_GET(self):
-        main_server.async_worker(self)
+        main_server.async_worker(self, 'GET')
     def do_POST(self):
-        main_server.async_worker(self)
+        main_server.async_worker(self, 'POST')
 
 class Server():
     def bind(self, path_regex=''):
@@ -192,55 +192,79 @@ class Server():
             return wrapper
         return my_decorator
             
-    def async_worker(self, request):
-        rr = Request(request)
+    def async_worker(self, request, method):
+        rr = Request(request, method) 
+        res = []
+        Content_type='text/plain'
         try:
-            for bind in self.bindes:
+            for bind in self.bindes: # обработка бинда
                 match = re.fullmatch(bind, rr.path)
                 if match:
                     res = self.bindes[bind](rr,*match.groups())
                     break
-            else:
-                if self.__dict__.get('_code404'):
+            else: # если бинда нету
+                if self.__dict__.get('_code404'): # Попытка получить 404 ошибку
                     res = 404, self._code404(rr)
                 else: res = 404, {'error':404}
-                
+
+            # Content type
+            if len(res) >= 3: # Пользователь знает тип контента
+                if len(res) >= 4: # Есть кастомные заголовки(в виде словаря)
+                    headers = res[3]
+
+                Content_type = res[2] # Отправка типа контента
+                result = res[1]
+            else: # Пользователь не знает тип контента
+                if type(res[1]) is str: # Строка, хтмл страница
+                    Content_type = 'text/html'
+                    result = res[1]
+                elif type(res[1]) is dict: # Словарь, жсон обьект
+                    Content_type = 'application/json'
+                    result = res[1]
+                else:
+                    result = str(res[1])
+            data_type = type(result)
+            try:
+                if data_type is dict:
+                    result = json.dumps(result)
+                if data_type is bytes:
+                    pass
+                elif data_type is str:
+                    result = result.encode()
+                else: result = str(result).encode()
+                res = list(res)
+                res[1] = result
+            except Exception as E:
+                print(f'failed to encode request "{result}" to bytes:\n')
+                raise E
+
         except Exception as e:
             print_tb(e.__traceback__)
             print(e)
             try:
                 if self.__dict__.get('_code500'):
-                    res = 500, self._code500(rr, e)
-                else: res = 500, {'error':500}
-            except:
-                res = 500, {"error":500}
-        request.send_response(res[0])
-        if res[0] >= 300 and res[0] < 400:
-            request.send_header("Location", res[1].split('href="')[1].split('"')[0])
+                    res = 500, json.dumps(self._code500(rr, e)).encode()
+                else:
+                    res = 500, b'{"error":500}'
+                Content_type = 'application/json'
+            except Exception as t:
+                print_tb(t.__traceback__)
+                print(t)
+                res = 500, b'{"error":500}'
+                Content_type = 'application/json'
 
-        # Content type
-        if len(res) >= 3:
-            if len(res) >= 4:
-                for v in res[3]:
-                    request.send_header(v, res[3][v])
-                    print(f'{v} sended')
 
-            request.send_header('Content-type', res[2])
-            request.end_headers()
-            request.wfile.write(res[1])
-        else:
-            if type(res[1]) is str:
-                request.send_header('Content-type', 'text/html')
-                request.end_headers()
-                request.wfile.write(res[1].encode())
-            elif type(res[1]) is dict:
-                request.send_header('Content-type', 'application/json')
-                request.end_headers()
-                request.wfile.write(json.dumps(res[1]).encode())
-            else:
-                request.wfile.write(str(res[1]).encode())
+        request.send_response(res[0]) # Отправляем код. 404, 500 или указанный
+        for key in headers.keys():
+            request.send_header(key, headers[key])
+        request.send_header('Content-type', Content_type)
+        request.end_headers()
+        try:
+            request.wfile.write(res[1]) # отправка ответа
+        except BrokenPipeError:
+            print('The client disconnected ahead of time')
         return
-
+        
     def __init__(self, address = "localhost", port = 8000, sync = True):
         self.bindes = {}
         self.server_address = (address, port)
