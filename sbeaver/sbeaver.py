@@ -4,8 +4,22 @@ from traceback import print_tb
 import urllib.parse
 import json
 import cgi
+import sys
 import re
+import io
 import os
+try:
+    import brotli
+except:
+    print('Failed to import brotli. It will not be possible to decode br \nPossible not installed; run pip install brotli to fix')
+try:
+    import gzip
+except:
+    print('Failed to import gzip. It will not be possible to decode gzip \nPossible not installed; run pip install gzip to fix')
+#try:
+#    import zlib
+#except:
+#    print('Failed to import zlib. It will not be possible to decode deflate \nPossible not installed; run pip install zlib to fix')
 
 class Types():
     class aplication():
@@ -74,17 +88,30 @@ class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
 class Request():
     def parse_all(self):
         self._ip
-        self._headers
         self._args
         self.form =  {}
+        encoding = self.headers.get('Content-Encoding')
+        print(encoding)
         if "Content-Length" in self.headers:
             length = int(self.headers.get('Content-Length','0'))
+            self.raw_data = self.req.rfile.read(length) # Получаем сырой контент
+            print(encoding)
+            print(encoding in ['gzip','x-gzip'] and 'gzip' in sys.modules)
+            if encoding in ['gzip','x-gzip'] and 'gzip' in sys.modules: # Если контент сжат gzip ом и модуль импортирован то декомпрессить
+                self.raw_data = gzip.decompress(self.raw_data)
+            elif encoding in ['br'] and 'brotli' in sys.modules: # Если контент сжат br ом и модуль импортирован то декомпрессить
+                self.raw_data = brotli.decompress(self.raw_data)
+
+            read_buffer = io.BytesIO(self.raw_data)
+            self.headers['Content-Length'] = len(self.raw_data)
             if length > 0:
                 self.form = cgi.FieldStorage(
-                    fp=self.req.rfile,
-                    headers=self.req.headers,
-                    environ={'REQUEST_METHOD': 'POST'}
+                    fp=read_buffer,
+                    headers=self.headers,
+                    environ={'REQUEST_METHOD': 'POST'},
                 )
+            print(self.form)
+            print(self.raw_data)
         self.data = {}
         self.files = {}
         for key in self.form.keys(): 
@@ -116,6 +143,7 @@ class Request():
         self.req = req
         self.splited = req.path.split('?',1)
         self.path = urllib.parse.unquote(self.splited[0])
+        self._headers
         self.method = method
 
     def __str__(self) -> str:
@@ -123,7 +151,7 @@ class Request():
     @property
     def dict(self):
         d = self.__dict__
-        dell = ['req', 'form', 'files']
+        dell = ['req', 'form', 'files', 'raw_data']
         result = {}
         for key in d:
             if not key in dell:
@@ -195,6 +223,7 @@ class Server():
     def async_worker(self, request, method):
         rr = Request(request, method) 
         res = []
+        headers = {}
         Content_type='text/plain'
         try:
             for bind in self.bindes: # обработка бинда

@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: sbeaver
-Version: 0.4
+Version: 0.4.2
 Summary: Simple http server for api
 Home-page: https://github.com/wex335/sbeaver
 Author-email: wex335@yandex.ru
@@ -96,5 +96,6 @@ You can return files using method file
 def photo(request):
     return sbeaver.file('beaver.png',sbeaver.Types.image.png)
 ```
+
 
 
