@@ -90,6 +90,8 @@ class Request():
         self._ip
         self._args
         self.form =  {}
+        self.data = {}
+        self.files = {}
         encoding = self.headers.get('Content-Encoding')
         if "Content-Length" in self.headers:
             length = int(self.headers.get('Content-Length','0'))
@@ -99,16 +101,17 @@ class Request():
             elif encoding in ['br'] and 'brotli' in sys.modules: # Если контент сжат br ом и модуль импортирован то декомпрессить
                 self.raw_data = brotli.decompress(self.raw_data)
 
-            read_buffer = io.BytesIO(self.raw_data)
-            self.headers['Content-Length'] = len(self.raw_data)
-            if length > 0:
-                self.form = cgi.FieldStorage(
-                    fp=read_buffer,
-                    headers=self.headers,
-                    environ={'REQUEST_METHOD': 'POST'},
-                )
-        self.data = {}
-        self.files = {}
+            try:
+                self.data = json.loads(self.raw_data)
+            except:
+                read_buffer = io.BytesIO(self.raw_data)
+                self.headers['Content-Length'] = len(self.raw_data)
+                if length > 0:
+                    self.form = cgi.FieldStorage(
+                        fp=read_buffer,
+                        headers=self.headers,
+                        environ={'REQUEST_METHOD': 'POST'},
+                    )
         for key in self.form.keys(): 
             value = self.form.getvalue(key)
             if type(value) is bytes:
@@ -119,6 +122,8 @@ class Request():
     @property
     def _ip(self):
         self.ip = self.req.client_address[0]
+        if self.ip == '127.0.0.1':
+            self.ip = self.headers.get('X-Forwarded-For', '127.0.0.1')
         return self.ip
     @property
     def _headers(self):
@@ -140,6 +145,8 @@ class Request():
         self.path = urllib.parse.unquote(self.splited[0])
         self._headers
         self.method = method
+        if main_server.auto_parse:
+            self.parse_all()
 
     def __str__(self) -> str:
         return f'headers: {self.headers}\nargs: {self.args}\ndata: {self.data}' 
@@ -161,14 +168,36 @@ class CustomHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         main_server.async_worker(self, 'POST')
 
+class AlreadyUsedException(Exception):
+    def __init__(self, func):
+        self.message = f'Function {func.__name__} already bind on other path'
+        # переопределяется конструктор встроенного класса `Exception()`
+        super().__init__(self.message) 
+
+class InvalidParametersCount(Exception):
+    def __init__(self, func, need, there_are):
+        self.message = f'Function {func.__name__} take {there_are} parameters, but need {need}'
+        # переопределяется конструктор встроенного класса `Exception()`
+        super().__init__(self.message) 
+
 class Server():
     def bind(self, path_regex=''):
         def my_decorator(func):
-            self.bindes[path_regex] = func
+            self._bind(path_regex, func)
             def wrapper(pat):
                 return func(pat)
             return wrapper
         return my_decorator
+        
+    def _bind(self, regex, func):
+        regex = re.compile(regex)
+        if func.__qualname__ in self.funcs.keys():
+            raise AlreadyUsedException(func)
+        need = regex.groups + 1
+        if need != func.__code__.co_argcount:
+            raise InvalidParametersCount(func, need, func.__code__.co_argcount)
+        self.bindes[regex] = func
+        self.funcs[func.__qualname__] = func
 
     def ebind(self, path_regex=''):
         """Bind endpoint by '<some>'
@@ -181,7 +210,7 @@ class Server():
             for _ in rr:
                 if len(_) > 0: 
                     reg = reg.replace(_,r'(\w+)')
-            self.bindes[reg] = func
+            self._bind(reg+'$', func)
             def wrapper(pat):
                 return func(pat)
             return wrapper
@@ -193,7 +222,7 @@ class Server():
         @server.sbind('/sbind')
         def sbind(request):"""
         def my_decorator(func):
-            self.bindes[path+"$"] = func
+            self._bind(path+'$', func)
             def wrapper(pat):
                 return func(pat)
             return wrapper
@@ -289,10 +318,14 @@ class Server():
             print('The client disconnected ahead of time')
         return
         
-    def __init__(self, address = "localhost", port = 8000, sync = True):
+    def __init__(self, address = "localhost", port = 8000, sync = True, auto_parse = True):
         self.bindes = {}
+        self.funcs = {}
         self.server_address = (address, port)
+        self.port = port
+        self.address = address
         self.sync = sync
+        self.auto_parse = auto_parse
 
     def start(self):
         global main_server
@@ -302,6 +335,7 @@ class Server():
         else:
             httpd = ThreadedHTTPServer(self.server_address, CustomHandler)
         try:
+            print(f'sbeaver server started at http://{self.address}:{self.port}')
             httpd.serve_forever()
         except KeyboardInterrupt:
             pass

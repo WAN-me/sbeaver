@@ -1,5 +1,4 @@
 import sbeaver
-sbeaver.Types
 server = sbeaver.Server(address="localhost", port=8000, sync=True)
 
 @server.sbind('/') # static bind
@@ -7,7 +6,7 @@ def args(request: sbeaver.Request):
     return sbeaver.redirect(307,'/info') # redirect with data(307 code)
 
 @server.bind(r'/regex/(\w*)(?:\.|/)(\w*)(?:|/)') # bind by regex
-def regex(request: sbeaver.Request, param1 = None, param2 = None): # params from regex(capture groups)
+def regex_bind(request: sbeaver.Request, param1 = None, param2 = None): # params from regex(capture groups)
     return 200, {'first':param1, 'second':param2}
 
 @server.ebind('/ebind/<submethod>/<method>') # bind by <some> construction
