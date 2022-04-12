@@ -11,11 +11,11 @@ import os
 try:
     import brotli
 except:
-    print('Failed to import brotli. It will not be possible to decode br \nPossible not installed; run pip install brotli to fix')
+    print('Failed to import brotli. It will not be possible to decode br \nPossible not installed; run pip install brotli to fix', file=sys.stderr)
 try:
     import gzip
 except:
-    print('Failed to import gzip. It will not be possible to decode gzip \nPossible not installed; run pip install gzip to fix')
+    print('Failed to import gzip. It will not be possible to decode gzip \nPossible not installed; run pip install gzip to fix', file=sys.stderr)
 #try:
 #    import zlib
 #except:
@@ -288,12 +288,12 @@ class Server():
                 res = list(res)
                 res[1] = result
             except Exception as E:
-                print(f'failed to encode request "{result}" to bytes:\n')
+                print(f'failed to encode request "{result}" to bytes:\n', file=sys.stderr)
                 raise E
 
         except Exception as e:
             print_tb(e.__traceback__)
-            print(e)
+            print(e, file=sys.stderr)
             try:
                 if self.__dict__.get('_code500'):
                     res = 500, json.dumps(self._code500(rr, e)).encode()
@@ -302,7 +302,7 @@ class Server():
                 Content_type = 'application/json'
             except Exception as t:
                 print_tb(t.__traceback__)
-                print(t)
+                print(t, file=sys.stderr)
                 res = 500, b'{"error":500}'
                 Content_type = 'application/json'
 
@@ -315,7 +315,7 @@ class Server():
         try:
             request.wfile.write(res[1]) # отправка ответа
         except BrokenPipeError:
-            print('The client disconnected ahead of time')
+            print('The client disconnected ahead of time', file=sys.stderr)
         return
         
     def __init__(self, address = "localhost", port = 8000, sync = True, auto_parse = True):
