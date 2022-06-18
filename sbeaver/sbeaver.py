@@ -11,11 +11,13 @@ import os
 try:
     import brotli
 except:
-    print('Failed to import brotli. It will not be possible to decode br \nPossible not installed; run pip install brotli to fix', file=sys.stderr)
+    if not main_server.silence:
+        print('Failed to import brotli. It will not be possible to decode br \nPossible not installed; run pip install brotli to fix', file=sys.stderr)
 try:
     import gzip
 except:
-    print('Failed to import gzip. It will not be possible to decode gzip \nPossible not installed; run pip install gzip to fix', file=sys.stderr)
+    if not main_server.silence:
+        print('Failed to import gzip. It will not be possible to decode gzip \nPossible not installed; run pip install gzip to fix', file=sys.stderr)
 #try:
 #    import zlib
 #except:
@@ -167,6 +169,11 @@ class CustomHandler(BaseHTTPRequestHandler):
         main_server.async_worker(self, 'GET')
     def do_POST(self):
         main_server.async_worker(self, 'POST')
+    def log_message(self, format, *args):
+        if main_server.silence:
+            return
+        else:
+            return BaseHTTPRequestHandler.log_message(self,format, *args)
 
 class AlreadyUsedException(Exception):
     def __init__(self, func):
@@ -288,12 +295,14 @@ class Server():
                 res = list(res)
                 res[1] = result
             except Exception as E:
-                print(f'failed to encode request "{result}" to bytes:\n', file=sys.stderr)
+                if not main_server.silence:
+                    print(f'failed to encode request "{result}" to bytes:\n', file=sys.stderr)
                 raise E
 
         except Exception as e:
-            print_tb(e.__traceback__)
-            print(e, file=sys.stderr)
+            if not main_server.silence:
+                print_tb(e.__traceback__)
+                print(e, file=sys.stderr)
             try:
                 if self.__dict__.get('_code500'):
                     res = 500, json.dumps(self._code500(rr, e)).encode()
@@ -301,8 +310,9 @@ class Server():
                     res = 500, b'{"error":500}'
                 Content_type = 'application/json'
             except Exception as t:
-                print_tb(t.__traceback__)
-                print(t, file=sys.stderr)
+                if not main_server.silence:
+                    print_tb(t.__traceback__)
+                    print(t, file=sys.stderr)
                 res = 500, b'{"error":500}'
                 Content_type = 'application/json'
 
@@ -315,10 +325,11 @@ class Server():
         try:
             request.wfile.write(res[1]) # отправка ответа
         except BrokenPipeError:
-            print('The client disconnected ahead of time', file=sys.stderr)
+            if not main_server.silence:
+                print('The client disconnected ahead of time', file=sys.stderr)
         return
         
-    def __init__(self, address = "localhost", port = 8000, sync = True, auto_parse = True):
+    def __init__(self, address = "localhost", port = 8000, sync = True, auto_parse = True, silence = False):
         self.bindes = {}
         self.funcs = {}
         self.server_address = (address, port)
@@ -326,6 +337,7 @@ class Server():
         self.address = address
         self.sync = sync
         self.auto_parse = auto_parse
+        self.silence = silence
 
     def start(self):
         global main_server
@@ -335,7 +347,8 @@ class Server():
         else:
             httpd = ThreadedHTTPServer(self.server_address, CustomHandler)
         try:
-            print(f'sbeaver server started at http://{self.address}:{self.port}')
+            if not main_server.silence:
+                print(f'sbeaver server started at http://{self.address}:{self.port}')
             httpd.serve_forever()
         except KeyboardInterrupt:
             pass

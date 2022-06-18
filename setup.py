@@ -1,8 +1,8 @@
 from setuptools import setup
 setup(name='sbeaver',
-      version='0.5.1',
+      version='0.6',
       license='GNU',
-      url="https://github.com/wex335/sbeaver",
+      url="https://github.com/wan-me/sbeaver",
       platforms='ALL',
       long_description="""# Sbeaver
 This is sbeaver - a lightweight and extremely simple http server for creating APIs.
