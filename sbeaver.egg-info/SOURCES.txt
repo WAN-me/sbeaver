@@ -1,6 +1,7 @@
 setup.cfg
 setup.py
 sbeaver/__init__.py
+sbeaver/file_server.py
 sbeaver/sbeaver.py
 sbeaver.egg-info/PKG-INFO
 sbeaver.egg-info/SOURCES.txt

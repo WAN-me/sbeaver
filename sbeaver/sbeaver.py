@@ -8,6 +8,8 @@ import sys
 import re
 import io
 import os
+
+from sbeaver.file_server import manage_files
 try:
     import brotli
 except:
@@ -73,7 +75,7 @@ class Types():
         webm = 'video/webm' 
 def file(path, type, filename=None):
     with open(path, "rb") as file:
-        return 200, file.read(-1), type, {"Content-disposition": f'attachment; filename="{filename or path.split(os.sep,1)[::-1][0]}"'}
+        return 200, file.read(-1), type, {"Content-disposition": f'filename="{filename or path.split(os.sep,1)[::-1][0]}"'}
 
 def redirect(code,location):
     html = f'''<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">\n
@@ -353,3 +355,9 @@ class Server():
         except KeyboardInterrupt:
             pass
         httpd.server_close()
+if __name__ == "__main__":
+    server = Server(sync=False)
+    @server.bind('/(.*)')
+    def all(req, filename='index.html'):
+        return manage_files(req)
+    server.start()
