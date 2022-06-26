@@ -10,16 +10,6 @@ import io
 import os
 
 from sbeaver.file_server import manage_files
-try:
-    import brotli
-except:
-    if not main_server.silence:
-        print('Failed to import brotli. It will not be possible to decode br \nPossible not installed; run pip install brotli to fix', file=sys.stderr)
-try:
-    import gzip
-except:
-    if not main_server.silence:
-        print('Failed to import gzip. It will not be possible to decode gzip \nPossible not installed; run pip install gzip to fix', file=sys.stderr)
 #try:
 #    import zlib
 #except:
@@ -340,6 +330,18 @@ class Server():
         self.sync = sync
         self.auto_parse = auto_parse
         self.silence = silence
+
+        try:
+            import brotli
+        except:
+            if not self.silence:
+                print('Failed to import brotli. It will not be possible to decode br \nPossible not installed; run pip install brotli to fix', file=sys.stderr)
+        try:
+            import gzip
+        except:
+            if not self.silence:
+                print('Failed to import gzip. It will not be possible to decode gzip \nPossible not installed; run pip install gzip to fix', file=sys.stderr)
+
 
     def start(self):
         global main_server
