@@ -1,4 +1,5 @@
 import sbeaver
+from sbeaver import Response
 server = sbeaver.Server(address="localhost", port=8000, sync=True)
 
 @server.sbind('/') # static bind
@@ -16,7 +17,12 @@ def method(request: sbeaver.Request,  submethod = None, method = None):
 @server.sbind('/info')
 def info(request: sbeaver.Request):
     request.parse_all() # get and save data, url params, ip from request
-    return 200, request.dict # return all known data about request
+    return request.dict # return all known data about request
+
+@server.sbind('/cookies')
+def cookies(request: sbeaver.Request):
+    print(request.cookies)
+    return Response(200, request.dict, cookies={'ff': '1d'})
 
 @server.sbind('/photo')
 def photo(request: sbeaver.Request):
