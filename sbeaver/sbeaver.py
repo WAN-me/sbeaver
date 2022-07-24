@@ -10,10 +10,12 @@ import io
 import os
 
 from sbeaver.file_server import manage_files
-#try:
-#    import zlib
-#except:
-#    print('Failed to import zlib. It will not be possible to decode deflate \nPossible not installed; run pip install zlib to fix')
+try:
+    import zlib
+except:
+    print('Failed to import zlib. It will not be possible to decode deflate \nPossible not installed; run pip install zlib to fix')
+
+    
 
 class Types():
     class aplication():
@@ -63,6 +65,7 @@ class Types():
         msvideo = 'video/x-msvideo'    
         flv = 'video/x-flv'   
         webm = 'video/webm' 
+        
 def file(path, type, filename=None):
     with open(path, "rb") as file:
         return 200, file.read(-1), type, {"Content-disposition": f'filename="{filename or path.split(os.sep,1)[::-1][0]}"'}
@@ -357,9 +360,3 @@ class Server():
         except KeyboardInterrupt:
             pass
         httpd.server_close()
-if __name__ == "__main__":
-    server = Server(sync=False)
-    @server.bind('/(.*)')
-    def all(req, filename='index.html'):
-        return manage_files(req)
-    server.start()

@@ -3,3 +3,4 @@ from .sbeaver import redirect
 from .sbeaver import Request
 from .sbeaver import Types
 from .sbeaver import file
+from .sbeaver import manage_files
