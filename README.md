@@ -81,8 +81,9 @@ def args(request):
 
 # Files
 You can return files using method file
+
 ```python
 @server.sbind('/photo')
 def photo(request):
-    return sbeaver.file('beaver.png',sbeaver.Types.image.png)
+    return sbeaver.open_file('beaver.png', sbeaver.Types.Image.png)
 ```
