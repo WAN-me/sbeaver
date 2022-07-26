@@ -307,6 +307,7 @@ class Server():
         rr = Request(request, method)
         res = []
         headers = {}
+        cookies = {}
         Content_type = 'text/plain'
         try:
             for bind in self.bindes:  # обработка бинда
