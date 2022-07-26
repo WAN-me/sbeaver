@@ -25,9 +25,8 @@ import os
 try:
     import zlib
 except ImportError:
-    print('Failed to import zlib. It will not be possible to decode deflate \n'
-          'Possible not installed; run pip install zlib to fix')
-    exit(1)
+    print('Failed to import zlib. It will not be possible to decode deflate\n'
+          'Run\n\t> pip install zlib \nto install.\n', file=sys.stderr)
 
 try:
     import brotli
@@ -453,15 +452,13 @@ class Server():
 
         if not self.silence:
             if not gzip:
-                print(
-                    'Failed to import gzip. It will not be possible to decode gzip \n'
-                    'Possible not installed; run pip install gzip to fix',
-                    file=sys.stderr)
+                print('Failed to import gzip. It will not be possible to decode gzip\n'
+                      'Run\n\t> pip install gzip \nto install.\n',
+                      file=sys.stderr)
             if not brotli:
-                print(
-                    'Failed to import brotli. It will not be possible to decode br \n'
-                    'Possible not installed; run pip install brotli to fix',
-                    file=sys.stderr)
+                print('Failed to import brotli. It will not be possible to decode br\n'
+                      'Run\n\t> pip install brotli \nto install.\n',
+                      file=sys.stderr)
 
     def start(self):
         global main_server

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 __title__ = 'sbeaver'
-__description__ = 'Simple http server for api'
+__description__ = 'Simple HTTP Server for REST API'
 __url__ = 'https://github.com/wan-me/sbeaver'
 __version__ = '0.7.1'
 __author__ = 'wex335'
