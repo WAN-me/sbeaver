@@ -1,3 +1,15 @@
+# -*- coding: utf-8 -*-
+
+"""
+    Простейший REST API сервер
+    Программа была написана: @wex335
+    Программа была отрефакторена: @SantaSpeen
+"""
+
+# Обратите внимание!!!
+# Контент ниже может вас шокировать, или заставить совершить самосуд над разработчиком.
+# Не подготовленных людей и детей уберите от экранов.
+
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from http import cookies
 from socketserver import ThreadingMixIn
@@ -10,15 +22,26 @@ import re
 import io
 import os
 
-from sbeaver.file_server import manage_files
 try:
     import zlib
-except:
-    print('Failed to import zlib. It will not be possible to decode deflate \nPossible not installed; run pip install zlib to fix')
+except ImportError:
+    print('Failed to import zlib. It will not be possible to decode deflate \n'
+          'Possible not installed; run pip install zlib to fix')
+    exit(1)
+
+try:
+    import brotli
+except ImportError:
+    brotli = None
+
+try:
+    import gzip
+except ImportError:
+    gzip = None
 
 
-class Types():
-    class aplication():
+class Types:
+    class Application:
         jar = 'application/java-archive'
         js = 'application/javascript'
         ogg = 'application/ogg'
@@ -32,14 +55,14 @@ class Types():
         x_www_form_urlencoded = 'application/x-www-form-urlencoded'
         other = 'application/octet-stream'
 
-    class audio():
+    class Audio:
         mp3 = 'audio/mpeg'
         wma = 'audio/x-ms-wma'
         realaudio = 'audio/vnd.rn-realaudio'
         wav = 'audio/x-wav'
         ogg = 'audio/ogg'
 
-    class image():
+    class Image:
         gif = 'image/gif'
         jpeg = 'image/jpeg'
         pjpeg = 'image/pjpeg'
@@ -52,7 +75,7 @@ class Types():
         wap_webp = 'image/vnd.wap.wbmp'
         webp = 'image/webp'
 
-    class text():
+    class Text:
         css = 'text/css'
         csv = 'text/csv'
         html = 'text/html'
@@ -61,7 +84,7 @@ class Types():
         xml = 'text/xml'
         md = 'text/markdown'
 
-    class video():
+    class Video:
         mpeg = 'video/mpeg'
         mp4 = 'video/mp4'
         quicktime = 'video/quicktime'
@@ -71,9 +94,10 @@ class Types():
         webm = 'video/webm'
 
 
-def file(path, type, filename=None):
-    with open(path, "rb") as file:
-        return 200, file.read(-1), type, {"Content-disposition": f'filename="{filename or path.split(os.sep,1)[::-1][0]}"'}
+def open_file(path, file_type, filename=None):
+    with open(path, "rb") as f:
+        return 200, f.read(-1), file_type, {
+            "Content-disposition": f'filename="{filename or path.split(os.sep, 1)[::-1][0]}"'}
 
 
 def redirect(code, location):
@@ -82,15 +106,27 @@ def redirect(code, location):
     <h1>Redirecting...</h1>\n
     <p>You should be redirected automatically to target URL: 
     <a href="{location}">{location}</a>. If not click the link.'''
-    return code, html, Types.text.html, {"Location": location}
+    return code, html, Types.Text.html, {"Location": location}
 
 
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     pass
 
 
-class Response():
-    def __init__(self, code=200, data='ok', mimetype=Types.text.plain, headers={}, cookies={}):
+class Response:
+
+    def __init__(
+            self,
+            code: int = 200,
+            data: str = 'ok',
+            mimetype: Types = Types.Text.plain,
+            headers: dict = None,
+            cookies: dict = None
+    ):
+        if cookies is None:
+            cookies = {}
+        if headers is None:
+            headers = {}
         self.code = code
         self.data = data
         self.mimetype = mimetype
@@ -101,7 +137,8 @@ class Response():
         return self.code, self.data, self.mimetype, self.headers, self.cookies
 
 
-class Request():
+class Request:
+
     def parse_all(self):
         self._ip
         self._args
@@ -114,10 +151,10 @@ class Request():
             length = int(self.headers.get('Content-Length', '0'))
             self.raw_data = self.req.rfile.read(
                 length)  # Получаем сырой контент
-            # Если контент сжат gzip ом и модуль импортирован то декомпрессить
+            # Если контент сжат gzip ом и модуль импортирован, то декомпрессить
             if encoding in ['gzip', 'x-gzip'] and 'gzip' in sys.modules:
                 self.raw_data = gzip.decompress(self.raw_data)
-            # Если контент сжат br ом и модуль импортирован то декомпрессить
+            # Если контент сжат br ом и модуль импортирован, то декомпрессить
             elif encoding in ['br'] and 'brotli' in sys.modules:
                 self.raw_data = brotli.decompress(self.raw_data)
 
@@ -241,7 +278,9 @@ class Server():
 
             def wrapper(pat):
                 return func(pat)
+
             return wrapper
+
         return my_decorator
 
     def _bind(self, regex, func):
@@ -259,17 +298,20 @@ class Server():
         Example: 
         @server.ebind('/ebind/<submethod>/<method>')
         def ebind(request,  submethod = None, method = None):"""
+
         def my_decorator(func):
             rr = re.findall(r'(<\w+>)+', path_regex)
             reg = path_regex
             for _ in rr:
                 if len(_) > 0:
                     reg = reg.replace(_, r'(\w+)')
-            self._bind(reg+'$', func)
+            self._bind(reg + '$', func)
 
             def wrapper(pat):
                 return func(pat)
+
             return wrapper
+
         return my_decorator
 
     def sbind(self, path):
@@ -277,12 +319,15 @@ class Server():
         Example: 
         @server.sbind('/sbind')
         def sbind(request):"""
+
         def my_decorator(func):
-            self._bind(path+'$', func)
+            self._bind(path + '$', func)
 
             def wrapper(pat):
                 return func(pat)
+
             return wrapper
+
         return my_decorator
 
     def code404(self):
@@ -291,7 +336,9 @@ class Server():
 
             def wrapper(pat):
                 return func(pat)
+
             return wrapper
+
         return my_decorator
 
     def code500(self):
@@ -300,7 +347,9 @@ class Server():
 
             def wrapper(pat):
                 return func(pat)
+
             return wrapper
+
         return my_decorator
 
     def async_worker(self, request, method):
@@ -308,7 +357,7 @@ class Server():
         res = []
         headers = {}
         cookies = {}
-        Content_type = 'text/plain'
+        content_type = 'text/plain'
         try:
             for bind in self.bindes:  # обработка бинда
                 match = re.fullmatch(bind, rr.path)
@@ -332,14 +381,14 @@ class Server():
                         cookies = res[4]
                     headers = res[3]
 
-                Content_type = res[2]  # Отправка типа контента
+                content_type = res[2]  # Отправка типа контента
                 result = res[1]
             else:  # Пользователь не знает тип контента
                 if type(res[1]) is str:  # Строка, хтмл страница
-                    Content_type = 'text/html'
+                    content_type = 'text/html'
                     result = res[1]
                 elif type(res[1]) is dict:  # Словарь, жсон обьект
-                    Content_type = 'application/json'
+                    content_type = 'application/json'
                     result = res[1]
                 else:
                     result = str(res[1])
@@ -355,11 +404,11 @@ class Server():
                     result = str(result).encode()
                 res = list(res)
                 res[1] = result
-            except Exception as E:
+            except Exception as e:
                 if not main_server.silence:
                     print(
                         f'failed to encode request "{result}" to bytes:\n', file=sys.stderr)
-                raise E
+                raise e
 
         except Exception as e:
             if not main_server.silence:
@@ -370,20 +419,20 @@ class Server():
                     res = 500, json.dumps(self._code500(rr, e)).encode()
                 else:
                     res = 500, b'{"error":500}'
-                Content_type = 'application/json'
+                content_type = 'application/json'
             except Exception as t:
                 if not main_server.silence:
                     print_tb(t.__traceback__)
                     print(t, file=sys.stderr)
                 res = 500, b'{"error":500}'
-                Content_type = 'application/json'
+                content_type = 'application/json'
 
         request.send_response(res[0])  # Отправляем код. 404, 500 или указанный
         for key in headers.keys():
             request.send_header(key, headers[key])
         for key in cookies.keys():
-            request.send_header('Set-Cookie', key+'='+cookies[key])
-        request.send_header('Content-type', Content_type)
+            request.send_header('Set-Cookie', key + '=' + cookies[key])
+        request.send_header('Content-type', content_type)
         request.end_headers()
         try:
             request.wfile.write(res[1])  # отправка ответа
@@ -402,16 +451,17 @@ class Server():
         self.auto_parse = auto_parse
         self.silence = silence
 
-        try:
-            import brotli
-        except:
-            if not self.silence:
-                print('Failed to import brotli. It will not be possible to decode br \nPossible not installed; run pip install brotli to fix', file=sys.stderr)
-        try:
-            import gzip
-        except:
-            if not self.silence:
-                print('Failed to import gzip. It will not be possible to decode gzip \nPossible not installed; run pip install gzip to fix', file=sys.stderr)
+        if not self.silence:
+            if not gzip:
+                print(
+                    'Failed to import gzip. It will not be possible to decode gzip \n'
+                    'Possible not installed; run pip install gzip to fix',
+                    file=sys.stderr)
+            if not brotli:
+                print(
+                    'Failed to import brotli. It will not be possible to decode br \n'
+                    'Possible not installed; run pip install brotli to fix',
+                    file=sys.stderr)
 
     def start(self):
         global main_server
@@ -422,8 +472,7 @@ class Server():
             httpd = ThreadedHTTPServer(self.server_address, CustomHandler)
         try:
             if not main_server.silence:
-                print(
-                    f'sbeaver server started at http://{self.address}:{self.port}')
+                print(f'sbeaver server started at http://{self.address}:{self.port}')
             httpd.serve_forever()
         except KeyboardInterrupt:
             pass
