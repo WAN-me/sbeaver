@@ -145,7 +145,7 @@ class Request:
         self.data = {}
         self.files = {}
         self._cookies
-        encoding = self.headers.get('Content-Encoding')
+        encoding = self.headers.get('Content-encoding')
         if "Content-Length" in self.headers:
             length = int(self.headers.get('Content-Length', '0'))
             self.raw_data = self.req.rfile.read(
