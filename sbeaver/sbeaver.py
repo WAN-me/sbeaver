@@ -145,9 +145,9 @@ class Request:
         self.data = {}
         self.files = {}
         self._cookies
-        encoding = self.headers.get('Content-encoding')
-        if "Content-Length" in self.headers:
-            length = int(self.headers.get('Content-Length', '0'))
+        encoding = self.headers.get('content-encoding')
+        if "content-length" in self.headers:
+            length = int(self.headers.get('content-length', '0'))
             self.raw_data = self.req.rfile.read(
                 length)  # Получаем сырой контент
             # Если контент сжат gzip ом и модуль импортирован, то декомпрессить
@@ -161,7 +161,7 @@ class Request:
                 self.data = json.loads(self.raw_data)
             except:
                 read_buffer = io.BytesIO(self.raw_data)
-                self.headers['Content-Length'] = len(self.raw_data)
+                self.headers['content-length'] = len(self.raw_data)
                 if length > 0:
                     self.form = cgi.FieldStorage(
                         fp=read_buffer,
@@ -179,21 +179,21 @@ class Request:
     def _ip(self):
         self.ip = self.req.client_address[0]
         if self.ip == '127.0.0.1':
-            self.ip = self.headers.get('X-Forwarded-For', '127.0.0.1')
+            self.ip = self.headers.get('x-forwarded-for', '127.0.0.1')
         return self.ip
 
     @property
     def _headers(self):
         self.headers = {}
         for i in range(len(self.req.headers.values())):
-            self.headers[self.req.headers.keys()[i]] = self.req.headers.values()[
+            self.headers[str(self.req.headers.keys()[i]).lower()] = self.req.headers.values()[
                 i]
         return self.headers
 
     @property
     def _cookies(self):
         self.cookies = {}
-        cooks = cookies.SimpleCookie(self.headers.get('Cookie')).items()
+        cooks = cookies.SimpleCookie(self.headers.get('cookie')).items()
         for i in cooks:
             self.cookies[i[0]] = i[1].coded_value
         return self.cookies
