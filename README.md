@@ -1,5 +1,9 @@
 # Sbeaver
 This is sbeaver - a lightweight and extremely simple http server for creating APIs.
+- [ ] add auto-restart on change code
+- [ ] fix cookies
+- [ ] rewrite on sockets
+
 
 To install sbeaver on your system, you can use the `pip install sbeaver` command, or you can download this repository and run `python setup.py install`
 
